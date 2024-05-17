@@ -27,7 +27,11 @@ class CatSerializer(serializers.ModelSerializer):
     achievements = AchievementSerializer(many=True, required=False)
     color = serializers.ChoiceField(choices=CHOICES)
     age = serializers.SerializerMethodField()
-    
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
     class Meta:
         model = Cat
         fields = ('id', 'name', 'color', 'birth_year', 'achievements', 'owner',
@@ -49,3 +53,15 @@ class CatSerializer(serializers.ModelSerializer):
                 AchievementCat.objects.create(
                     achievement=current_achievement, cat=cat)
             return cat
+
+    def validate_birth_year(self, value):
+        year = dt.date.today().year
+        if not (year - 40 < value <= year):
+            raise serializers.ValidationError('Проверьте год рождения!')
+        return value
+
+    def validate(self, data):
+        if data['color'] == data['name']:
+            raise serializers.ValidationError(
+                'Имя не может совпадать с цветом!')
+        return data
